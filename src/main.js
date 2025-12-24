@@ -2,7 +2,7 @@ import './styles/main.css';
 import { Engine } from './core/Engine';
 import { StarField } from './objects/celestial/StarField';
 import { Planet } from './objects/celestial/Planet';
-import { Sun } from './objects/celestial/Sun'; // [BARU] Import Sun
+import { Sun } from './objects/celestial/Sun';
 import { OrbitVisualizer } from './tools/OrbitVisualizer';
 import { TimeController } from './tools/TimeController';
 import * as THREE from 'three';
@@ -13,22 +13,27 @@ async function main() {
     const engine = new Engine('app');
 
     // 1. LOAD TEXTURES (Tunggu sampai selesai / Await)
-    // Pastikan nama file sesuai dengan yang Anda download di folder public/textures/
     console.log("Loading textures...");
+    
     const sunTex = await engine.assets.loadTexture('sun', '/textures/sun.jpg');
     const earthTex = await engine.assets.loadTexture('earth', '/textures/earth_day.jpg');
     const earthNormal = await engine.assets.loadTexture('earthNorm', '/textures/earth_normal.jpg');
+    
+    // [PENTING] Load Tekstur Awan (Pastikan file earth_clouds.jpg ada di folder public/textures)
+    const earthCloud = await engine.assets.loadTexture('earthCloud', '/textures/earth_clouds.jpg'); 
+    
     const moonTex = await engine.assets.loadTexture('moon', '/textures/moon.jpg');
     console.log("Textures loaded!");
 
     // 2. Setup Dasar
     const stars = new StarField();
     engine.scene.add(stars.getMesh());
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05); // Gelapkan ambient biar kontras matahari terasa
+    
+    // Ambient light redup biar kontras matahari terasa
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05); 
     engine.scene.add(ambientLight);
 
-    // HAPUS PointLight manual yang lama, karena sekarang Sun.js membawanya sendiri
-
+    // Setup Waktu
     const timeController = new TimeController();
     engine.loop.setTimeController(timeController);
 
@@ -38,10 +43,11 @@ async function main() {
     const sun = new Sun(planetData.sun, sunTex); 
     engine.scene.add(sun.getMesh());
 
-    // B. BUMI (Pakai Texture & Normal Map)
+    // B. BUMI (Pakai Texture, Normal Map, DAN AWAN)
     const earth = new Planet(planetData.earth, {
         map: earthTex,
-        normal: earthNormal
+        normal: earthNormal,
+        cloud: earthCloud // <--- [PENTING] Kirim tekstur awan ke sini
     });
     engine.scene.add(earth.getMesh());
     engine.loop.updatables.push(earth);
@@ -54,7 +60,7 @@ async function main() {
     const moonData = planetData.moon;
     const moonVisualDist = moonData.distanceFromSunKm * KM_TO_UNIT * 50;
     
-    // Bulan Mesh Manual (Simple) - Update Material pake Texture
+    // Bulan Mesh Manual
     const moonGeo = new THREE.SphereGeometry(moonData.radiusKm * KM_TO_UNIT * 100, 32, 32);
     const moonMat = new THREE.MeshStandardMaterial({ 
         map: moonTex,
@@ -64,13 +70,13 @@ async function main() {
     
     earth.getMesh().add(moonMesh);
 
-    // Logic Orbit Bulan (Tetap sama)
+    // Logic Orbit Bulan
     moonMesh.accumulatedTime = 0;
     moonMesh.tick = (delta) => {
         moonMesh.accumulatedTime += delta; 
         moonMesh.position.x = Math.cos(moonMesh.accumulatedTime) * moonVisualDist;
         moonMesh.position.z = Math.sin(moonMesh.accumulatedTime) * moonVisualDist;
-        moonMesh.rotation.y += delta; // Bulan rotasi juga
+        moonMesh.rotation.y += delta; 
     };
     engine.loop.updatables.push(moonMesh);
 

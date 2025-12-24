@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 
 export class Loop {
-    constructor(camera, scene, renderer) {
+    constructor(camera, scene, renderer, composer = null) {
         this.camera = camera;
         this.scene = scene;
         this.renderer = renderer;
+        this.composer = composer; // Simpan composer
         this.updatables = []; 
         this.clock = new THREE.Clock();
-        this.timeController = null; // [BARU] Slot untuk controller
+        this.timeController = null;
     }
 
-    // [BARU] Fungsi untuk memasang controller
     setTimeController(controller) {
         this.timeController = controller;
     }
@@ -26,23 +26,23 @@ export class Loop {
     }
 
     tick() {
-        // Ambil delta time (waktu normal antar frame, misal 0.016 detik)
         const rawDelta = this.clock.getDelta();
-
-        // [BARU] Ambil multiplier dari slider (kalau belum ada, default 1)
         const speedMultiplier = this.timeController ? this.timeController.getSpeed() : 1;
-
-        // [BARU] Kalikan delta dengan speed
         const simDelta = rawDelta * speedMultiplier;
 
-        // Kirim waktu yang sudah dipercepat ke semua objek (Planet)
         for (const object of this.updatables) {
-            // Pastikan objek punya method tick sebelum dipanggil
             if (object.tick) {
                 object.tick(simDelta); 
             }
         }
 
-        this.renderer.render(this.scene, this.camera);
+        // --- [BAGIAN KRUSIAL] ---
+        // Jika Bloom aktif (composer ada), render pakai composer
+        if (this.composer) {
+            this.composer.render();
+        } else {
+            // Jika tidak, render biasa
+            this.renderer.render(this.scene, this.camera);
+        }
     }
 }

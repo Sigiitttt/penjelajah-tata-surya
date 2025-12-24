@@ -5,7 +5,7 @@ import { KM_TO_UNIT } from '../../utils/Constants';
 export class Planet {
     /**
      * @param {Object} data - Data JSON
-     * @param {Object} textures - { map: Texture, normal: Texture }
+     * @param {Object} textures - { map, normal, cloud } <--- Update parameter ini
      */
     constructor(data, textures = {}) {
         this.data = data;
@@ -15,34 +15,57 @@ export class Planet {
         this.period = data.orbitPeriodDays;
         this.eccentricity = data.eccentricity || 0;
 
-        // 1. Geometry
+        // 1. Bola Planet Utama (Tanah/Laut)
         const geometry = new THREE.SphereGeometry(this.radius, 64, 64);
-
-        // 2. Material dengan Tekstur
         const material = new THREE.MeshStandardMaterial({ 
-            map: textures.map || null,        // Tekstur Warna (Diffuse)
-            normalMap: textures.normal || null, // Tekstur Relief (Normal)
-            color: textures.map ? 0xffffff : 0xaaaaaa, // Jika ada tekstur, warna dasar putih
+            map: textures.map || null,
+            normalMap: textures.normal || null,
+            color: textures.map ? 0xffffff : 0xaaaaaa,
             roughness: 0.8,
             metalness: 0.1
         });
         
         this.mesh = new THREE.Mesh(geometry, material);
 
-        this.accumulatedTime = Math.random() * 100; // Random start position
+        // --- [BARU] FITUR AWAN ---
+        if (textures.cloud) {
+            // Buat bola awan sedikit lebih besar (1.02x radius asli)
+            const cloudGeo = new THREE.SphereGeometry(this.radius * 1.02, 64, 64);
+            
+            const cloudMat = new THREE.MeshStandardMaterial({
+                map: textures.cloud,
+                transparent: true, // Wajib agar bagian hitam jadi tembus pandang
+                opacity: 0.8,      // Sedikit transparan biar elegan
+                blending: THREE.AdditiveBlending, // Agar awan terlihat bercahaya kena matahari
+                side: THREE.DoubleSide
+            });
+
+            this.cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+            
+            // Tempelkan awan ke planet utama
+            this.mesh.add(this.cloudMesh);
+        }
+
+        this.accumulatedTime = Math.random() * 100;
     }
 
     tick(delta, speedMultiplier = 1) {
-        // ... (Logika tick SAMA PERSIS dengan sebelumnya, tidak berubah) ...
         this.accumulatedTime += delta * speedMultiplier;
         if (this.orbitRadius === 0) return;
         
+        // 1. Gerakan Orbit
         const pos = KeplerSolver.solve(this.orbitRadius, this.eccentricity, this.period, this.accumulatedTime);
         this.mesh.position.x = pos.x;
         this.mesh.position.z = pos.z;
         
-        // [TAMBAHAN] Rotasi Planet pada porosnya (Rotasi Harian)
+        // 2. Rotasi Planet (Siang/Malam)
         this.mesh.rotation.y += 0.5 * delta * speedMultiplier;
+
+        // 3. [BARU] Rotasi Awan
+        // Awan bergerak sedikit lebih cepat/lambat dari planet biar terlihat dinamis
+        if (this.cloudMesh) {
+            this.cloudMesh.rotation.y += 0.07 * delta * speedMultiplier; 
+        }
     }
 
     getMesh() {
