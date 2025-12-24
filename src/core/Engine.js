@@ -51,8 +51,8 @@ export class Engine {
         // C. Pass 2: Efek UnrealBloom (Silau)
         const bloomPass = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight), 
-           1.5,  // Strength: Kekuatan silau (Makin tinggi makin silau)
-            0.2,  // Radius: Sebaran cahaya
+            2.5,  // Strength: Kekuatan silau (Makin tinggi makin silau)
+            0.4,  // Radius: Sebaran cahaya
             0.85  // Threshold: Batas kecerahan (Hanya matahari yg kena efek ini)
         );
         this.composer.addPass(bloomPass);
