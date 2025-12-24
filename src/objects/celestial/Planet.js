@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { KeplerSolver } from '../../physics/KeplerSolver';
 import { KM_TO_UNIT } from '../../utils/Constants';
+import { vertexShader, fragmentShader } from '../../shaders/atmosphereShader';
 
 export class Planet {
     /**
@@ -44,6 +45,19 @@ export class Planet {
             
             // Tempelkan awan ke planet utama
             this.mesh.add(this.cloudMesh);
+        }if (textures.cloud) {
+            const atmoGeo = new THREE.SphereGeometry(this.radius * 1.2, 64, 64); // Lebih besar (1.2x)
+            
+            const atmoMat = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                blending: THREE.AdditiveBlending, // Agar warnanya "nambah" cahaya
+                side: THREE.BackSide, // Render bagian belakang bola agar efeknya di pinggir luar
+                transparent: true
+            });
+
+            this.atmosphereMesh = new THREE.Mesh(atmoGeo, atmoMat);
+            this.mesh.add(this.atmosphereMesh);
         }
 
         this.accumulatedTime = Math.random() * 100;

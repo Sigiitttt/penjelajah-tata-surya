@@ -4,7 +4,7 @@ import { KM_TO_UNIT } from '../../utils/Constants';
 export class Sun {
     constructor(data, texture) {
         this.data = data;
-        
+
         // 1. Geometry
         // Radius dikali 100 seperti planet lain agar terlihat
         const radius = data.radiusKm * KM_TO_UNIT * 100;
@@ -26,14 +26,17 @@ export class Sun {
         // 3. Sumber Cahaya (PointLight)
         // Matahari membawa lampunya sendiri!
         const sunLight = new THREE.PointLight(0xffffff, 2.5, 1000); // Intensity 2.5, Jarak 1000
-        
+
         // Setup Shadow (Bayangan) - Opsional untuk nanti
-        sunLight.castShadow = true; 
-        
+        sunLight.castShadow = true;
+
         // Masukkan lampu ke dalam mesh matahari
         this.mesh.add(sunLight);
     }
-
+    tick(delta) {
+        // Matahari berputar sangat pelan pada porosnya
+        this.mesh.rotation.y += 0.05 * delta;
+    }
     getMesh() {
         return this.mesh;
     }
