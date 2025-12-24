@@ -1,0 +1,20 @@
+{
+  "sun": {
+    "radiusKm": 696340,
+    "distanceFromSunKm": 0,
+    "orbitPeriodDays": 0,
+    "eccentricity": 0
+  },
+  "earth": {
+    "radiusKm": 6371,
+    "distanceFromSunKm": 149600000,
+    "orbitPeriodDays": 365, 
+    "eccentricity": 0.017
+  },
+  "moon": {
+    "radiusKm": 1737,
+    "distanceFromSunKm": 384400,
+    "orbitPeriodDays": 27,
+    "eccentricity": 0.055
+  }
+}
