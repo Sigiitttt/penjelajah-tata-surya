@@ -1,24 +1,30 @@
 import * as THREE from 'three';
 import { ArcadePhysics } from '../../physics/ArcadePhysics';
 import { InputHandler } from '../../core/InputHandler';
-import { WORLD_BOUNDARY, KM_TO_UNIT } from '../../utils/Constants'; // Import KM_TO_UNIT juga
+import { WORLD_BOUNDARY, KM_TO_UNIT } from '../../utils/Constants'; 
 import { Exhaust } from './Exhaust';
 import { bus } from '../../core/EventBus'; 
-import planetData from '../../data/planets.json'; // Import Data Planet
+import planetData from '../../data/planets.json'; 
 
 export class Ship {
-    constructor(scene) {
-        // 1. Setup Model
-        const geometry = new THREE.ConeGeometry(0.5, 2, 8);
-        geometry.rotateX(Math.PI / 2); 
+    // [UPDATE] Constructor sekarang menerima 'modelTemplate' dari main.js
+    constructor(scene, modelTemplate) {
         
-        const material = new THREE.MeshStandardMaterial({ 
-            color: 0xff0000, 
-            roughness: 0.4,
-            metalness: 0.8
-        });
+        // --- 1. SETUP MODEL ---
+        if (modelTemplate) {
+            // [BARU] Gunakan Model 3D Asli (GLB)
+            this.mesh = modelTemplate.clone();
+            
+            // Atur ukuran dan rotasi (sesuaikan dengan modelnya)
+            this.mesh.scale.set(0.5, 0.5, 0.5); 
+            this.mesh.rotation.y = Math.PI; // Putar balik jika pesawat menghadap belakang
+        } else {
+            // Fallback: Jika model gagal load, pakai kotak sementara (biar gak error)
+            const geometry = new THREE.BoxGeometry(1, 1, 3);
+            const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            this.mesh = new THREE.Mesh(geometry, material);
+        }
 
-        this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.set(0, 0, 100); 
 
         // 2. Setup Sistem
@@ -76,15 +82,15 @@ export class Ship {
 
         // --- 3. INPUT CONTROL & BOOST LOGIC ---
         
-        // Setup variabel dasar
-        let currentMaxSpeed = 2.0;
+        // [UPDATE] Setup variabel dasar (Lebih Cepat)
+        let currentMaxSpeed = 10.0; // Dulu 2.0 (Sekarang jalan biasa agak cepat)
         let currentAccel = this.physics.accelPower;
 
         // LOGIKA BOOST (SHIFT)
-        // Jika Shift ditekan, speed limit naik & tenaga mesin dikali 20x
+        // [UPDATE] Interplanetary Speed (Ngebut Parah)
         if (this.input.isDown('ShiftLeft')) {
-            currentMaxSpeed = 8.0;   
-            currentAccel *= 20.0;     
+            currentMaxSpeed = 200.0;   // Dulu 8.0 (Sekarang 200.0)
+            currentAccel *= 50.0;      // Tenaga mesin dikali 50x
         }
         
         // Terapkan limit kecepatan ke physics
@@ -138,6 +144,4 @@ export class Ship {
         // Update Nama Lokasi
         this.checkLocation();
     }
-
-    
 }

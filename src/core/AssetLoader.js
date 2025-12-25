@@ -1,32 +1,46 @@
 import * as THREE from 'three';
+// [BARU] Import GLTFLoader
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class AssetLoader {
     constructor() {
         this.textureLoader = new THREE.TextureLoader();
-        this.textures = {}; // Tempat menyimpan tekstur yang sudah diload
+        this.gltfLoader = new GLTFLoader(); // [BARU] Setup Loader
     }
 
-    // Fungsi untuk memuat satu tekstur
     loadTexture(key, path) {
         return new Promise((resolve, reject) => {
             this.textureLoader.load(
                 path,
                 (texture) => {
-                    this.textures[key] = texture;
                     console.log(`✅ Texture loaded: ${key}`);
                     resolve(texture);
                 },
-                undefined, // onProgress (opsional)
+                undefined,
                 (err) => {
-                    console.error(`❌ Error loading texture: ${path}`, err);
+                    console.error(`❌ Error loading texture: ${key}`, err);
                     reject(err);
                 }
             );
         });
     }
 
-    // Ambil tekstur yang sudah ada
-    get(key) {
-        return this.textures[key];
+    // [BARU] Method untuk load Model 3D
+    loadModel(key, path) {
+        return new Promise((resolve, reject) => {
+            this.gltfLoader.load(
+                path,
+                (gltf) => {
+                    console.log(`✅ Model loaded: ${key}`);
+                    // Kita return 'scene' nya karena itu adalah Mesh utamanya
+                    resolve(gltf.scene);
+                },
+                undefined,
+                (err) => {
+                    console.error(`❌ Error loading model: ${key}`, err);
+                    reject(err);
+                }
+            );
+        });
     }
 }
