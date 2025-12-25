@@ -11,7 +11,7 @@ import { KM_TO_UNIT } from './utils/Constants';
 import { Ship } from './objects/player/Ship';
 import { ChaseCamera } from './objects/player/ChaseCamera';
 import { ModeManager } from './core/ModeManager';
-
+import { HUD } from './ui/HUD';
 
 async function main() {
   const engine = new Engine('app');
@@ -114,6 +114,8 @@ async function main() {
   // Posisi awal kamera (Debugging agar dekat pesawat saat mulai)
   engine.camera.position.set(0, 20, 150);
   engine.camera.lookAt(0, 0, 100);
+
+  const hud = new HUD();
 
   // UI WARNING (Invisible Wall)
   const warningDiv = document.createElement('div');

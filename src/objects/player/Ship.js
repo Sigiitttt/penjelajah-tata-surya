@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { ArcadePhysics } from '../../physics/ArcadePhysics';
 import { InputHandler } from '../../core/InputHandler';
-import { WORLD_BOUNDARY } from '../../utils/Constants';
+import { WORLD_BOUNDARY, KM_TO_UNIT } from '../../utils/Constants'; // Import KM_TO_UNIT juga
 import { Exhaust } from './Exhaust';
+import { bus } from '../../core/EventBus'; 
+import planetData from '../../data/planets.json'; // Import Data Planet
 
 export class Ship {
-    // [PERBAIKAN 1] Constructor harus menerima 'scene'
     constructor(scene) {
-        // 1. Setup Model (Kerucut Sederhana)
+        // 1. Setup Model
         const geometry = new THREE.ConeGeometry(0.5, 2, 8);
         geometry.rotateX(Math.PI / 2); 
         
@@ -24,13 +25,35 @@ export class Ship {
         this.input = new InputHandler();
         this.physics = new ArcadePhysics(this.mesh);
         this.isOutOfBounds = false;
-
-        // [PERBAIKAN 2] Kirim scene ke Exhaust
         this.exhaust = new Exhaust(scene);
     }
 
     getMesh() {
         return this.mesh;
+    }
+
+    checkLocation() {
+        let nearestName = "DEEP SPACE";
+
+        // 1. Cek Matahari (Radius 0)
+        const distToSun = this.mesh.position.length();
+        const sunLimit = (planetData.sun.radiusKm * KM_TO_UNIT * 100) + 50; 
+
+        if (distToSun < sunLimit) {
+            nearestName = "SUN ORBIT";
+        }
+
+        // 2. Cek Sektor Bumi (Jarak sekitar 150 unit)
+        // 149,600,000 km * KM_TO_UNIT = ~149.6 unit
+        const earthOrbitDist = 149.6; 
+        
+        // Jika jarak pesawat ada di radius 130 - 170 unit, kita anggap dekat Bumi
+        if (Math.abs(distToSun - earthOrbitDist) < 20) {
+             nearestName = "EARTH SECTOR";
+        }
+        
+        // Kirim ke UI
+        bus.emit('locationUpdate', nearestName);
     }
 
     tick(delta) {
@@ -43,17 +66,30 @@ export class Ship {
             const pushBackForce = (distanceFromCenter - WORLD_BOUNDARY) * 0.5;
             
             this.physics.applyForce(directionToCenter.multiplyScalar(pushBackForce * delta));
-            this.physics.velocity.multiplyScalar(0.95); // Rem otomatis
+            this.physics.velocity.multiplyScalar(0.95); 
         } else {
             this.isOutOfBounds = false;
         }
 
-        // --- 2. UPDATE JEJAK MESIN (EXHAUST) ---
-        // Update partikel yang sudah hidup (agar mengecil/hilang)
+        // --- 2. UPDATE JEJAK MESIN ---
         this.exhaust.tick(delta);
 
-        // --- 3. INPUT CONTROL ---
+        // --- 3. INPUT CONTROL & BOOST LOGIC ---
         
+        // Setup variabel dasar
+        let currentMaxSpeed = 2.0;
+        let currentAccel = this.physics.accelPower;
+
+        // LOGIKA BOOST (SHIFT)
+        // Jika Shift ditekan, speed limit naik & tenaga mesin dikali 20x
+        if (this.input.isDown('ShiftLeft')) {
+            currentMaxSpeed = 8.0;   
+            currentAccel *= 20.0;     
+        }
+        
+        // Terapkan limit kecepatan ke physics
+        this.physics.maxSpeed = currentMaxSpeed;
+
         // Rotasi (A / D)
         if (this.input.isDown('KeyA')) {
             this.mesh.rotation.y += this.physics.rotationSpeed * delta;
@@ -62,16 +98,14 @@ export class Ship {
             this.mesh.rotation.y -= this.physics.rotationSpeed * delta;
         }
 
-        // Maju (W) & Spawn Jejak
+        // Maju (W)
         if (this.input.isDown('KeyW')) {
-            // A. Fisika Maju
+            // [PENTING] Gunakan currentAccel yang sudah di-boost
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.mesh.quaternion);
-            this.physics.applyForce(forward.multiplyScalar(this.physics.accelPower * delta));
+            this.physics.applyForce(forward.multiplyScalar(currentAccel * delta));
 
-            // B. [PERBAIKAN 3] Spawn Partikel Jejak
+            // Spawn Jejak
             const isBoosting = this.input.isDown('ShiftLeft');
-            
-            // Hitung posisi pantat pesawat (mundur dikit di sumbu Z lokal)
             const enginePos = new THREE.Vector3(0, 0, 1.2)
                 .applyQuaternion(this.mesh.quaternion)
                 .add(this.mesh.position);
@@ -85,13 +119,6 @@ export class Ship {
             this.physics.applyForce(backward.multiplyScalar(this.physics.accelPower * delta));
         }
 
-        // Boost (Shift)
-        if (this.input.isDown('ShiftLeft')) {
-            this.physics.maxSpeed = 5.0; 
-        } else {
-            this.physics.maxSpeed = 2.0; 
-        }
-
         // Rem (Space)
         if (this.input.isDown('Space')) {
             this.physics.friction = 0.90; 
@@ -99,7 +126,18 @@ export class Ship {
             this.physics.friction = 0.98; 
         }
 
-        // Update Fisika Terakhir
+        // --- 4. UPDATE PHYSICS (WAJIB ADA) ---
+        // Tanpa baris ini, kecepatan tidak akan pernah dihitung!
         this.physics.update(delta);
+        
+        // --- 5. UPDATE UI (HUD) ---
+        const currentSpeed = this.physics.velocity.length();
+        console.log("Speed:", currentSpeed);
+        bus.emit('speedUpdate', currentSpeed);
+
+        // Update Nama Lokasi
+        this.checkLocation();
     }
+
+    
 }
