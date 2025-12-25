@@ -1,8 +1,7 @@
-// Konversi: 1 Unit Three.js = 1.000.000 km (1 Juta Kilometer)
+// ... konstanta sebelumnya ...
+
 export const KM_TO_UNIT = 1 / 1000000; 
 
-// Contoh Penggunaan:
-// Jarak Asli 150.000.000 km * KM_TO_UNIT = 150 Unit Game.
-
-// Konstanta Fisika (Opsional, untuk masa depan)
-export const GRAVITY_CONSTANT = 0.0001;
+// [BARU] Batas Dunia (Jari-jari dari titik 0,0,0)
+// Misal 2000 unit (Cukup luas untuk menampung sampai Saturnus/Uranus dalam skala kita)
+export const WORLD_BOUNDARY = 2000;

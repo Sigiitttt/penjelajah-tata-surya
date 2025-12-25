@@ -61,8 +61,9 @@ async function main() {
   const earthOrbit = new OrbitVisualizer(planetData.earth, 0x444444);
   engine.scene.add(earthOrbit.getMesh());
 
-
-  const ship = new Ship();
+  // [PERBAIKAN PENTING DI SINI]
+  // Kirim engine.scene agar fitur Exhaust (Jejak Mesin) bisa jalan
+  const ship = new Ship(engine.scene); 
   engine.scene.add(ship.getMesh());
   engine.loop.updatables.push(ship);
 
@@ -79,7 +80,6 @@ async function main() {
   // 2. Buat Mode Manager
   const modeManager = new ModeManager(engine, chaseCam);
   // Kita perlu update modeManager juga setiap frame untuk cek tombol 'C'
-  // Tapi karena ModeManager tidak punya method tick(delta) tapi tick(), kita wrap:
   engine.loop.updatables.push({ tick: () => modeManager.tick() });
 
   // (Opsional) PointLight kecil di ekor pesawat biar keren
@@ -111,9 +111,36 @@ async function main() {
   };
   engine.loop.updatables.push(moonMesh);
 
-
+  // Posisi awal kamera (Debugging agar dekat pesawat saat mulai)
   engine.camera.position.set(0, 20, 150);
   engine.camera.lookAt(0, 0, 100);
+
+  // UI WARNING (Invisible Wall)
+  const warningDiv = document.createElement('div');
+  warningDiv.style.position = 'absolute';
+  warningDiv.style.top = '20%';
+  warningDiv.style.width = '100%';
+  warningDiv.style.textAlign = 'center';
+  warningDiv.style.color = 'red';
+  warningDiv.style.fontSize = '24px';
+  warningDiv.style.fontFamily = 'Arial, sans-serif';
+  warningDiv.style.fontWeight = 'bold';
+  warningDiv.style.display = 'none'; // Sembunyi dulu
+  warningDiv.innerText = '⚠️ WARNING: LEAVING SOLAR SYSTEM ⚠️\nTurning back...';
+  document.body.appendChild(warningDiv);
+
+  // Update Loop UI
+  engine.loop.updatables.push({
+    tick: () => {
+      if (ship.isOutOfBounds) {
+        warningDiv.style.display = 'block';
+        // Efek kedip
+        warningDiv.style.opacity = (Date.now() % 500 < 250) ? '1' : '0.5';
+      } else {
+        warningDiv.style.display = 'none';
+      }
+    }
+  });
 
   engine.start();
 }

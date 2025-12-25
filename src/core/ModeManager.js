@@ -1,4 +1,5 @@
 import { InputHandler } from './InputHandler';
+import { Crosshair } from '../ui/Crosshair';
 
 export class ModeManager {
     /**
@@ -9,7 +10,8 @@ export class ModeManager {
         this.engine = engine;
         this.chaseCamera = chaseCamera;
         this.input = new InputHandler(); // Butuh input buat deteksi tombol 'C'
-        
+        this.crosshair = new Crosshair();
+
         this.mode = 'ORBIT'; // Mulai dari orbit
         
         // Debounce agar sekali tekan tidak gonta-ganti mode 100x per detik
@@ -50,6 +52,8 @@ export class ModeManager {
         
         // 3. (Opsional) Set posisi awal Chase Camera ke posisi kamera saat ini biar smooth (nanti di-lerp)
         this.chaseCamera.currentPosition.copy(this.engine.camera.position);
+
+        this.crosshair.show();
     }
 
     setOrbitMode() {
@@ -63,5 +67,6 @@ export class ModeManager {
 
         // 2. Matikan Chase Camera
         this.chaseCamera.enabled = false;
+        this.crosshair.hide();
     }
 }
