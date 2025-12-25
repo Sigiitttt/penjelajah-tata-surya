@@ -28,6 +28,13 @@ export class Planet {
         
         this.mesh = new THREE.Mesh(geometry, material);
 
+        this.mesh.userData = { 
+            type: 'PLANET', // Penanda bahwa ini planet
+            name: data.name,
+            description: data.description || "Planet di Tata Surya",
+            details: data // Simpan semua data mentah
+        };
+
         // --- [BARU] FITUR AWAN ---
         if (textures.cloud) {
             // Buat bola awan sedikit lebih besar (1.02x radius asli)

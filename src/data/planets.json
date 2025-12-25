@@ -1,20 +1,72 @@
 {
   "sun": {
+    "name": "The Sun",
+    "description": "Bintang pusat tata surya.",
     "radiusKm": 696340,
     "distanceFromSunKm": 0,
-    "orbitPeriodDays": 0,
-    "eccentricity": 0
+    "orbitPeriodDays": 0
+  },
+  "mercury": {
+    "name": "Mercury",
+    "description": "Planet terkecil dan terdekat dengan Matahari. Permukaannya penuh kawah mirip Bulan.",
+    "radiusKm": 2439,
+    "distanceFromSunKm": 57900000,
+    "orbitPeriodDays": 88
+  },
+  "venus": {
+    "name": "Venus",
+    "description": "Planet terpanas di tata surya karena efek rumah kaca yang ekstrim. Sering disebut saudara kembar Bumi.",
+    "radiusKm": 6051,
+    "distanceFromSunKm": 108200000,
+    "orbitPeriodDays": 225
   },
   "earth": {
+    "name": "Earth",
+    "description": "Rumah kita. Satu-satunya planet yang diketahui menopang kehidupan.",
     "radiusKm": 6371,
     "distanceFromSunKm": 149600000,
-    "orbitPeriodDays": 365, 
-    "eccentricity": 0.017
+    "orbitPeriodDays": 365
+  },
+  "mars": {
+    "name": "Mars",
+    "description": "Planet Merah. Memiliki gunung tertinggi di tata surya (Olympus Mons). Target kolonisasi masa depan.",
+    "radiusKm": 3389,
+    "distanceFromSunKm": 227900000,
+    "orbitPeriodDays": 687
+  },
+  "jupiter": {
+    "name": "Jupiter",
+    "description": "Raja Planet. Raksasa gas dengan bintik merah besar (badai abadi).",
+    "radiusKm": 69911,
+    "distanceFromSunKm": 778500000,
+    "orbitPeriodDays": 4333
+  },
+  "saturn": {
+    "name": "Saturn",
+    "description": "Permata tata surya, terkenal dengan cincinnya yang megah.",
+    "radiusKm": 58232,
+    "distanceFromSunKm": 1434000000,
+    "orbitPeriodDays": 10759
+  },
+  "uranus": {
+    "name": "Uranus",
+    "description": "Raksasa es yang berputar miring (menggelinding) pada orbitnya.",
+    "radiusKm": 25362,
+    "distanceFromSunKm": 2871000000,
+    "orbitPeriodDays": 30687
+  },
+  "neptune": {
+    "name": "Neptune",
+    "description": "Planet terjauh. Raksasa es biru gelap dengan angin tercepat di tata surya.",
+    "radiusKm": 24622,
+    "distanceFromSunKm": 4495000000,
+    "orbitPeriodDays": 60190
   },
   "moon": {
+    "name": "The Moon",
+    "description": "Satelit alami Bumi.",
     "radiusKm": 1737,
     "distanceFromSunKm": 384400,
-    "orbitPeriodDays": 27,
-    "eccentricity": 0.055
+    "orbitPeriodDays": 27
   }
 }

@@ -12,6 +12,9 @@ import { Ship } from './objects/player/Ship';
 import { ChaseCamera } from './objects/player/ChaseCamera';
 import { ModeManager } from './core/ModeManager';
 import { HUD } from './ui/HUD';
+import { InteractionManager } from './core/InteractionManager';
+import { InfoPanel } from './ui/InfoPanel';
+
 
 async function main() {
   const engine = new Engine('app');
@@ -19,15 +22,24 @@ async function main() {
   // 1. LOAD TEXTURES (Tunggu sampai selesai / Await)
   console.log("Loading textures...");
 
+  // --- Load Tekstur Spesial (Matahari, Bumi, Bulan) ---
   const sunTex = await engine.assets.loadTexture('sun', '/textures/sun.jpg');
   const earthTex = await engine.assets.loadTexture('earth', '/textures/earth_day.jpg');
   const earthNormal = await engine.assets.loadTexture('earthNorm', '/textures/earth_normal.jpg');
-
-  // [PENTING] Load Tekstur Awan (Pastikan file earth_clouds.jpg ada di folder public/textures)
-  const earthCloud = await engine.assets.loadTexture('earthCloud', '/textures/earth_clouds.jpg');
-
+  const earthCloud = await engine.assets.loadTexture('earthCloud', '/textures/earth_clouds.jpg'); // [PENTING]
   const moonTex = await engine.assets.loadTexture('moon', '/textures/moon.jpg');
-  console.log("Textures loaded!");
+
+  // --- [BARU] Load Tekstur Planet Lainnya ---
+  // Pastikan Anda sudah punya file jpg-nya di folder public/textures/
+  const planetNames = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
+  const textures = {};
+  
+  for (const name of planetNames) {
+      // Kita load satu per satu
+      textures[name] = await engine.assets.loadTexture(name, `/textures/${name}.jpg`);
+  }
+  
+  console.log("All Textures loaded!");
 
   // 2. Setup Dasar
   const stars = new StarField();
@@ -48,11 +60,11 @@ async function main() {
   engine.scene.add(sun.getMesh());
   engine.loop.updatables.push(sun);
 
-  // B. BUMI (Pakai Texture, Normal Map, DAN AWAN)
+  // B. BUMI (Pakai Texture, Normal Map, DAN AWAN) - KODE LAMA TETAP ADA
   const earth = new Planet(planetData.earth, {
     map: earthTex,
     normal: earthNormal,
-    cloud: earthCloud // <--- [PENTING] Kirim tekstur awan ke sini
+    cloud: earthCloud 
   });
   engine.scene.add(earth.getMesh());
   engine.loop.updatables.push(earth);
@@ -61,9 +73,29 @@ async function main() {
   const earthOrbit = new OrbitVisualizer(planetData.earth, 0x444444);
   engine.scene.add(earthOrbit.getMesh());
 
+  // --- [BARU] D. PLANET LAINNYA (LOOPING) ---
+  // Kode ini akan membuat Mercury s/d Neptune secara otomatis
+  planetNames.forEach(name => {
+      const data = planetData[name];
+      // Hanya buat jika datanya ada di JSON
+      if (data) {
+          // Buat Planet
+          const planet = new Planet(data, {
+              map: textures[name] // Pakai tekstur yang diload di atas
+          });
+          engine.scene.add(planet.getMesh());
+          engine.loop.updatables.push(planet);
+
+          // Buat Orbit Visualizer untuk planet ini
+          const orbit = new OrbitVisualizer(data, 0x333333); // Warna abu gelap
+          engine.scene.add(orbit.getMesh());
+      }
+  });
+
+
   // [PERBAIKAN PENTING DI SINI]
   // Kirim engine.scene agar fitur Exhaust (Jejak Mesin) bisa jalan
-  const ship = new Ship(engine.scene); 
+  const ship = new Ship(engine.scene);
   engine.scene.add(ship.getMesh());
   engine.loop.updatables.push(ship);
 
@@ -87,7 +119,7 @@ async function main() {
   ship.getMesh().add(shipLight);
   shipLight.position.set(0, 0, 1);
 
-  // D. BULAN
+  // E. BULAN (Attach ke Bumi)
   const moonData = planetData.moon;
   const moonVisualDist = moonData.distanceFromSunKm * KM_TO_UNIT * 50;
 
@@ -98,6 +130,9 @@ async function main() {
     roughness: 0.9
   });
   const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+  
+  // Agar Bulan bisa diklik Raycaster (Tambahkan userData)
+  moonMesh.userData = { type: 'MOON', name: 'The Moon', description: moonData.description, details: moonData };
 
   earth.getMesh().add(moonMesh);
 
@@ -130,6 +165,11 @@ async function main() {
   warningDiv.style.display = 'none'; // Sembunyi dulu
   warningDiv.innerText = '⚠️ WARNING: LEAVING SOLAR SYSTEM ⚠️\nTurning back...';
   document.body.appendChild(warningDiv);
+
+  const interactionManager = new InteractionManager(engine.camera, engine.scene);
+
+  // 2. Setup Info Panel UI
+  const infoPanel = new InfoPanel();
 
   // Update Loop UI
   engine.loop.updatables.push({

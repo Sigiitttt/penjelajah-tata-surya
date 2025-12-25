@@ -132,7 +132,7 @@ export class Ship {
         
         // --- 5. UPDATE UI (HUD) ---
         const currentSpeed = this.physics.velocity.length();
-        console.log("Speed:", currentSpeed);
+        // console.log("Speed:", currentSpeed);
         bus.emit('speedUpdate', currentSpeed);
 
         // Update Nama Lokasi

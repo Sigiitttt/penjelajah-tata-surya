@@ -23,6 +23,13 @@ export class Sun {
 
         this.mesh = new THREE.Mesh(geometry, material);
 
+        this.mesh.userData = {
+            type: 'STAR',
+            name: 'The Sun',
+            description: 'Bintang pusat tata surya.',
+            details: data
+        };
+
         // 3. Sumber Cahaya (PointLight)
         // Matahari membawa lampunya sendiri!
         const sunLight = new THREE.PointLight(0xffffff, 2.5, 1000); // Intensity 2.5, Jarak 1000
