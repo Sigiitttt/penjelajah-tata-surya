@@ -1,49 +1,107 @@
 export class TimeController {
     constructor() {
-        this.timeScale = 1; // Default: 1 detik game = 1 detik asli
+        this.timeScale = 1; // Default: 1x Speed
+        this.savedScale = 1;
+        this.isPaused = false;
+        
+        this.slider = null;
+        this.label = null;
+
         this.createUI();
+        this.setupKeyboard();
     }
 
     createUI() {
-        // 1. Buat Container UI
         const container = document.createElement('div');
         container.style.position = 'absolute';
         container.style.bottom = '20px';
         container.style.left = '20px';
-        container.style.color = 'white';
-        container.style.fontFamily = 'sans-serif';
-        container.style.zIndex = '1000'; // Pastikan di atas canvas
-        container.style.padding = '10px';
-        container.style.background = 'rgba(0, 0, 0, 0.5)';
+        container.style.color = '#00ff00'; 
+        container.style.fontFamily = 'monospace';
+        container.style.fontWeight = 'bold';
+        container.style.zIndex = '1000';
+        container.style.padding = '15px';
+        container.style.background = 'rgba(0, 0, 0, 0.8)';
+        container.style.border = '1px solid #00ff00';
         container.style.borderRadius = '8px';
 
-        // 2. Label
-        const label = document.createElement('div');
-        label.innerText = 'Kecepatan Waktu: 1x';
-        label.style.marginBottom = '5px';
+        this.label = document.createElement('div');
+        this.label.innerText = 'TIME WARP: 1.0x';
+        this.label.style.marginBottom = '10px';
         
-        // 3. Slider (Range Input)
-        const slider = document.createElement('input');
-        slider.type = 'range';
-        slider.min = '0';
-        slider.max = '2000'; // Maksimal 2000x lebih cepat
-        slider.value = '1';
-        slider.style.width = '200px';
-        slider.style.cursor = 'pointer';
+        this.slider = document.createElement('input');
+        this.slider.type = 'range';
+        this.slider.min = '0';
+        this.slider.max = '2000'; 
+        this.slider.step = '0.1'; 
+        this.slider.value = '1';
+        this.slider.style.width = '200px';
+        this.slider.style.cursor = 'pointer';
 
-        // 4. Event Listener (Saat slider digeser)
-        slider.addEventListener('input', (e) => {
+        const helpText = document.createElement('div');
+        helpText.style.fontSize = '10px';
+        helpText.style.marginTop = '5px';
+        helpText.style.color = '#aaa';
+        helpText.innerText = "[T]: PAUSE | [R]: RESET 1x";
+
+        this.slider.addEventListener('input', (e) => {
             this.timeScale = parseFloat(e.target.value);
-            label.innerText = `Kecepatan Waktu: ${this.timeScale}x`;
+            this.updateLabel();
+            if (this.timeScale > 0) this.isPaused = false;
         });
 
-        // Gabungkan dan pasang ke layar
-        container.appendChild(label);
-        container.appendChild(slider);
+        container.appendChild(this.label);
+        container.appendChild(this.slider);
+        container.appendChild(helpText);
         document.body.appendChild(container);
     }
 
-    // Fungsi untuk mengambil nilai speed saat ini
+    setupKeyboard() {
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyT') this.togglePause();
+            if (e.code === 'KeyR') this.resetTime();
+        });
+    }
+
+    togglePause() {
+        this.isPaused = !this.isPaused;
+        if (this.isPaused) {
+            this.savedScale = (this.timeScale === 0) ? 1 : this.timeScale;
+            this.timeScale = 0;
+        } else {
+            this.timeScale = this.savedScale;
+        }
+        this.syncUI();
+    }
+
+    resetTime() {
+        this.isPaused = false;
+        this.timeScale = 1.0;
+        this.syncUI();
+    }
+
+    syncUI() {
+        if (this.slider) this.slider.value = this.timeScale;
+        this.updateLabel();
+    }
+
+    updateLabel() {
+        if (!this.label) return;
+        if (this.timeScale === 0) {
+            this.label.innerText = "TIME WARP: PAUSED ⏸️";
+            this.label.style.color = 'red';
+        } else {
+            this.label.innerText = `TIME WARP: ${this.timeScale.toFixed(1)}x ▶️`;
+            this.label.style.color = '#00ff00';
+        }
+    }
+
+    getDelta(delta) {
+        return delta * this.timeScale;
+    }
+
+    // --- [FIX: INI YANG HILANG TADI] ---
+    // Menambahkan kembali getSpeed() agar Loop.js tidak error
     getSpeed() {
         return this.timeScale;
     }

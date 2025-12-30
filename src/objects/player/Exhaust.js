@@ -3,58 +3,65 @@ import * as THREE from 'three';
 export class Exhaust {
     constructor(scene) {
         this.scene = scene;
-        this.particles = []; // Menyimpan partikel hidup
+        this.particles = [];
+        
+        // Setup Material Partikel (Glowing)
+        this.material = new THREE.MeshBasicMaterial({
+            color: 0x00ffff, // Cyan
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending // Agar terlihat bercahaya
+        });
+        
+        // [PERBAIKAN] Geometri Dikecilkan Drastis (0.02)
+        // Agar tidak menutupi pesawat yang ukurannya 0.05
+        this.geometry = new THREE.BoxGeometry(0.02, 0.02, 0.02); 
     }
 
-    /**
-     * Spawn partikel baru di posisi mesin
-     * @param {THREE.Vector3} position - Posisi mesin pesawat
-     * @param {boolean} isBoosting - Apakah sedang ngebut (partikel lebih besar/banyak)
-     */
     spawn(position, isBoosting) {
-        // 1. Buat Mesh Partikel (Kotak kecil glowing)
-        const size = isBoosting ? 0.8 : 0.4;
-        const geometry = new THREE.BoxGeometry(size, size, size);
-        const material = new THREE.MeshBasicMaterial({
-            color: isBoosting ? 0x00ffff : 0x0088ff, // Cyan saat ngebut, Biru saat biasa
-            transparent: true,
-            opacity: 0.8
-        });
+        // Batasi jumlah partikel biar gak berat
+        if (this.particles.length > 50) return;
 
-        const mesh = new THREE.Mesh(geometry, material);
+        const mesh = new THREE.Mesh(this.geometry, this.material);
         
         // Copy posisi pesawat
         mesh.position.copy(position);
         
-        // Random sedikit posisinya biar terlihat alami (Jitter)
-        mesh.position.x += (Math.random() - 0.5) * 0.5;
-        mesh.position.y += (Math.random() - 0.5) * 0.5;
-        mesh.position.z += (Math.random() - 0.5) * 0.5;
+        // [PERBAIKAN] Random Spread juga dikecilkan
+        // Supaya asapnya rapi di belakang, bukan menyebar kemana-mana
+        mesh.position.x += (Math.random() - 0.5) * 0.05; 
+        mesh.position.y += (Math.random() - 0.5) * 0.05; 
+        mesh.position.z += (Math.random() - 0.5) * 0.05;
 
-        // Simpan ke array
-        this.particles.push({ mesh, life: 1.0 }); // Life 1.0 artinya hidup 100%
+        // Data partikel
+        this.particles.push({
+            mesh: mesh,
+            life: 1.0, // Hidup 1 detik
+            isBoosting: isBoosting
+        });
+        
         this.scene.add(mesh);
     }
 
     tick(delta) {
-        // Loop semua partikel mundur
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
+            
+            // Kurangi umur
+            // Kalau boosting, asap hilang lebih cepat (0.5 detik)
+            const decay = p.isBoosting ? 2.0 : 1.0;
+            p.life -= delta * decay;
 
-            // 1. Kurangi Nyawa
-            p.life -= delta * 2.0; // Mati dalam 0.5 detik
-
-            // 2. Animasi (Mengecil & Memudar)
-            p.mesh.scale.setScalar(p.life);
-            p.mesh.material.opacity = p.life;
-
-            // 3. Cek Mati
             if (p.life <= 0) {
-                // Hapus dari Scene & Array
                 this.scene.remove(p.mesh);
-                p.mesh.geometry.dispose();
-                p.mesh.material.dispose();
                 this.particles.splice(i, 1);
+            } else {
+                // Efek Memudar
+                p.mesh.material.opacity = p.life * 0.5;
+                
+                // Efek Mengecil
+                const scale = p.life * (p.isBoosting ? 2.0 : 1.0); // Boost agak besar dikit
+                p.mesh.scale.set(scale, scale, scale);
             }
         }
     }

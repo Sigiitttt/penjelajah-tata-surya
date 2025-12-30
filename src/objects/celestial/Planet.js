@@ -3,7 +3,7 @@ import { KeplerSolver } from '../../physics/KeplerSolver';
 import { KM_TO_UNIT } from '../../utils/Constants';
 // Pastikan path ini sesuai dengan file shader Anda
 // Jika Anda memisahkan file .glsl, sesuaikan import-nya
-import { vertexShader, fragmentShader } from '../../shaders/atmosphereShader'; 
+import { vertexShader, fragmentShader } from '../../shaders/atmosphereShader';
 
 export class Planet {
     /**
@@ -12,29 +12,29 @@ export class Planet {
      */
     constructor(data, textures = {}) {
         this.data = data;
-        
+
         this.radius = data.radiusKm * KM_TO_UNIT * 100;
         this.orbitRadius = data.distanceFromSunKm * KM_TO_UNIT;
         this.period = data.orbitPeriodDays;
         this.eccentricity = data.eccentricity || 0;
 
         // 1. Bola Planet Utama (Tanah/Laut)
-        const geometry = new THREE.SphereGeometry(this.radius, 64, 64);
-        const material = new THREE.MeshStandardMaterial({ 
+        const geometry = new THREE.SphereGeometry(this.radius, 128, 128);
+        const material = new THREE.MeshStandardMaterial({
             map: textures.map || null,
             normalMap: textures.normal || null,
             color: textures.map ? 0xffffff : 0xaaaaaa,
             roughness: 0.8,
             metalness: 0.1
         });
-        
+
         this.mesh = new THREE.Mesh(geometry, material);
 
-        this.mesh.userData = { 
-            type: 'PLANET', 
+        this.mesh.userData = {
+            type: 'PLANET',
             name: data.name,
             description: data.description || "Planet di Tata Surya",
-            details: data 
+            details: data
         };
 
         // --- 2. FITUR AWAN (Hanya jika ada tekstur awan) ---
@@ -42,9 +42,9 @@ export class Planet {
             const cloudGeo = new THREE.SphereGeometry(this.radius * 1.02, 64, 64);
             const cloudMat = new THREE.MeshStandardMaterial({
                 map: textures.cloud,
-                transparent: true, 
-                opacity: 0.8,      
-                blending: THREE.AdditiveBlending, 
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
                 side: THREE.DoubleSide
             });
 
@@ -57,7 +57,7 @@ export class Planet {
         const noAtmosphere = ['The Moon', 'Mercury'];
 
         if (!noAtmosphere.includes(data.name)) {
-            
+
             // Tentukan Warna Glow
             let atmosphereColor = new THREE.Vector3(0.3, 0.6, 1.0); // Default Biru (Bumi/Neptunus)
 
@@ -69,7 +69,7 @@ export class Planet {
 
             // Buat Mesh Atmosfer
             const atmoGeo = new THREE.SphereGeometry(this.radius * 1.2, 64, 64);
-            
+
             const atmoMat = new THREE.ShaderMaterial({
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
@@ -92,18 +92,18 @@ export class Planet {
     tick(delta, speedMultiplier = 1) {
         this.accumulatedTime += delta * speedMultiplier;
         if (this.orbitRadius === 0) return; // Matahari diam
-        
+
         // 1. Gerakan Orbit (Kepler)
         const pos = KeplerSolver.solve(this.orbitRadius, this.eccentricity, this.period, this.accumulatedTime);
         this.mesh.position.x = pos.x;
         this.mesh.position.z = pos.z;
-        
+
         // 2. Rotasi Planet
         this.mesh.rotation.y += 0.5 * delta * speedMultiplier;
 
         // 3. Rotasi Awan
         if (this.cloudMesh) {
-            this.cloudMesh.rotation.y += 0.07 * delta * speedMultiplier; 
+            this.cloudMesh.rotation.y += 0.07 * delta * speedMultiplier;
         }
 
         // 4. Update Atmosfer (Opsional, jika shader butuh update posisi kamera)

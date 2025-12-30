@@ -21,7 +21,7 @@ export class Engine {
             60, 
             window.innerWidth / window.innerHeight, 
             0.1, 
-            20000 // <--- [UPDATE] Naikkan jadi 20.000 agar bisa lihat ujung tata surya
+            5000000 // <--- [UPDATE] Naikkan jadi 20.000 agar bisa lihat ujung tata surya
         );
         this.camera.position.set(0, 50, 400); 
 
@@ -46,7 +46,7 @@ export class Engine {
         // Pass 2: Efek UnrealBloom
         const bloomPass = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight), 
-            2.5,  // Strength
+            0.5,  // Strength
             0.4,  // Radius
             0.85  // Threshold
         );

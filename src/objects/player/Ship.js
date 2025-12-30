@@ -1,147 +1,203 @@
 import * as THREE from 'three';
 import { ArcadePhysics } from '../../physics/ArcadePhysics';
 import { InputHandler } from '../../core/InputHandler';
-import { WORLD_BOUNDARY, KM_TO_UNIT } from '../../utils/Constants'; 
+import { WORLD_BOUNDARY, KM_TO_UNIT } from '../../utils/Constants';
 import { Exhaust } from './Exhaust';
-import { bus } from '../../core/EventBus'; 
-import planetData from '../../data/planets.json'; 
+import { bus } from '../../core/EventBus';
+import planetData from '../../data/planets.json';
 
 export class Ship {
-    // [UPDATE] Constructor sekarang menerima 'modelTemplate' dari main.js
-    constructor(scene, modelTemplate) {
-        
+    constructor(scene, modelTemplate, allPlanets = []) {
+        this.scene = scene;
+        this.planets = allPlanets;
+
         // --- 1. SETUP MODEL ---
         if (modelTemplate) {
-            // [BARU] Gunakan Model 3D Asli (GLB)
             this.mesh = modelTemplate.clone();
-            
-            // Atur ukuran dan rotasi (sesuaikan dengan modelnya)
-            this.mesh.scale.set(0.5, 0.5, 0.5); 
-            this.mesh.rotation.y = Math.PI; // Putar balik jika pesawat menghadap belakang
+            this.mesh.scale.set(0.05, 0.05, 0.05);
+            this.mesh.rotation.y = 0;
         } else {
-            // Fallback: Jika model gagal load, pakai kotak sementara (biar gak error)
-            const geometry = new THREE.BoxGeometry(1, 1, 3);
+            const geometry = new THREE.ConeGeometry(0.1, 0.4, 8);
             const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
             this.mesh = new THREE.Mesh(geometry, material);
         }
 
-        this.mesh.position.set(0, 0, 100); 
+        // Posisi Aman
+        this.mesh.position.set(0, 0, 150000);
 
-        // 2. Setup Sistem
+        // 2. Setup Physics
         this.input = new InputHandler();
         this.physics = new ArcadePhysics(this.mesh);
+
+        // Tenaga Akselerasi Besar (Biar responsif)
+        this.physics.accelPower = 200.0;
+        this.physics.rotationSpeed = 2.5; // Rotasi dipercepat dikit biar lincah
+
         this.isOutOfBounds = false;
         this.exhaust = new Exhaust(scene);
+
+        this.isLanded = false;
+        this.nearestPlanet = null;
     }
 
-    getMesh() {
-        return this.mesh;
-    }
+    getMesh() { return this.mesh; }
 
-    checkLocation() {
-        let nearestName = "DEEP SPACE";
+    // --- LOGIKA GRAVITASI & ANTI-NEMBUS ---
+    handlePlanetaryPhysics(delta) {
+        let closestDist = Infinity;
+        let closestPlanet = null;
 
-        // 1. Cek Matahari (Radius 0)
-        const distToSun = this.mesh.position.length();
-        const sunLimit = (planetData.sun.radiusKm * KM_TO_UNIT * 100) + 50; 
+        if (this.planets && this.planets.length > 0) {
+            this.planets.forEach(p => {
+                const dist = this.mesh.position.distanceTo(p.mesh.position);
+                // Jarak ke PERMUKAAN (Bukan ke inti)
+                const distToSurface = dist - p.radius;
 
-        if (distToSun < sunLimit) {
-            nearestName = "SUN ORBIT";
+                if (distToSurface < closestDist) {
+                    closestDist = distToSurface;
+                    closestPlanet = p;
+                }
+            });
         }
 
-        // 2. Cek Sektor Bumi (Jarak sekitar 150 unit)
-        // 149,600,000 km * KM_TO_UNIT = ~149.6 unit
-        const earthOrbitDist = 149.6; 
-        
-        // Jika jarak pesawat ada di radius 130 - 170 unit, kita anggap dekat Bumi
-        if (Math.abs(distToSun - earthOrbitDist) < 20) {
-             nearestName = "EARTH SECTOR";
+        this.nearestPlanet = closestPlanet;
+
+        // Jika masuk area gravitasi (50 unit dari permukaan)
+        if (closestPlanet && closestDist < 50) {
+            const planetCenter = closestPlanet.mesh.position.clone();
+            const shipPos = this.mesh.position.clone();
+
+            const gravityVec = new THREE.Vector3().subVectors(planetCenter, shipPos).normalize();
+            const surfaceNormal = gravityVec.clone().negate();
+
+            // 1. Align Pesawat Mengikuti Lengkungan Planet
+            this.mesh.up.copy(surfaceNormal);
+            this.mesh.lookAt(planetCenter);
+
+            // 2. Tarikan Gravitasi (Hanya jika belum mendarat)
+            if (!this.isLanded) {
+                this.physics.velocity.add(gravityVec.multiplyScalar(9.8 * delta * 0.8));
+            }
+
+            // 3. [FIX] ANTI-NEMBUS / HARD COLLISION
+            // Jika jarak ke permukaan <= 0.5, paksa berhenti dan tempel di kulit planet
+            // ... (kode atas sama) ...
+
+            // D. Cek Tabrakan (Mendarat)
+            const landHeight = 0.5;
+
+            if (closestDist <= landHeight) {
+                if (!this.isLanded) {
+                    this.isLanded = true;
+                    this.physics.velocity.set(0, 0, 0);
+
+                    // [UPDATE] Simpan status di Mesh agar Kamera tahu
+                    this.mesh.userData.isLanded = true;
+
+                    bus.emit('locationUpdate', "LANDED: " + closestPlanet.data.name.toUpperCase());
+                }
+
+                // Snap posisi ke permukaan
+                const surfacePos = planetCenter.add(surfaceNormal.multiplyScalar(closestPlanet.radius + landHeight));
+                this.mesh.position.copy(surfacePos);
+
+            } else {
+                this.isLanded = false;
+
+                // [UPDATE] Reset status saat terbang lagi
+                this.mesh.userData.isLanded = false;
+            }
+
+        } else {
+            // Di Luar Angkasa
+            this.isLanded = false;
+            this.mesh.userData.isLanded = false; // [UPDATE]
+            this.mesh.up.set(0, 1, 0);
         }
-        
-        // Kirim ke UI
-        bus.emit('locationUpdate', nearestName);
     }
+
 
     tick(delta) {
-        // --- 1. CEK BATAS DUNIA ---
-        const distanceFromCenter = this.mesh.position.length();
+        this.handlePlanetaryPhysics(delta);
 
+        // Cek Batas Dunia
+        const distanceFromCenter = this.mesh.position.length();
         if (distanceFromCenter > WORLD_BOUNDARY) {
             this.isOutOfBounds = true;
             const directionToCenter = this.mesh.position.clone().normalize().negate();
             const pushBackForce = (distanceFromCenter - WORLD_BOUNDARY) * 0.5;
-            
             this.physics.applyForce(directionToCenter.multiplyScalar(pushBackForce * delta));
-            this.physics.velocity.multiplyScalar(0.95); 
+            this.physics.velocity.multiplyScalar(0.95);
         } else {
             this.isOutOfBounds = false;
         }
 
-        // --- 2. UPDATE JEJAK MESIN ---
         this.exhaust.tick(delta);
 
-        // --- 3. INPUT CONTROL & BOOST LOGIC ---
-        
-        // [UPDATE] Setup variabel dasar (Lebih Cepat)
-        let currentMaxSpeed = 10.0; // Dulu 2.0 (Sekarang jalan biasa agak cepat)
+        // --- INPUT CONTROL ---
+
+        let currentMaxSpeed = 100.0;
         let currentAccel = this.physics.accelPower;
 
-        // LOGIKA BOOST (SHIFT)
-        // [UPDATE] Interplanetary Speed (Ngebut Parah)
-        if (this.input.isDown('ShiftLeft')) {
-            currentMaxSpeed = 200.0;   // Dulu 8.0 (Sekarang 200.0)
-            currentAccel *= 50.0;      // Tenaga mesin dikali 50x
+        const isBoosting = this.input.isDown('ShiftLeft') || this.input.isDown('ShiftRight');
+
+        if (isBoosting) {
+            // [FIX SPEED] Naikkan jadi 5.000 agar perjalanan antar planet cepat
+            // Karena map kita RAKSASA, 500 itu kayak jalan kaki.
+            currentMaxSpeed = 500000.0;
+            currentAccel *= 10.0;
         }
-        
-        // Terapkan limit kecepatan ke physics
+
         this.physics.maxSpeed = currentMaxSpeed;
 
-        // Rotasi (A / D)
-        if (this.input.isDown('KeyA')) {
-            this.mesh.rotation.y += this.physics.rotationSpeed * delta;
-        }
-        if (this.input.isDown('KeyD')) {
-            this.mesh.rotation.y -= this.physics.rotationSpeed * delta;
-        }
+        // Kontrol Rotasi (A/D & Arrow Left/Right)
+        const isLeft = this.input.isDown('KeyA') || this.input.isDown('ArrowLeft');
+        const isRight = this.input.isDown('KeyD') || this.input.isDown('ArrowRight');
 
-        // Maju (W)
-        if (this.input.isDown('KeyW')) {
-            // [PENTING] Gunakan currentAccel yang sudah di-boost
+        if (isLeft) this.mesh.rotation.y += this.physics.rotationSpeed * delta;
+        if (isRight) this.mesh.rotation.y -= this.physics.rotationSpeed * delta;
+
+        // Kontrol Maju (W & Arrow Up)
+        const isForward = this.input.isDown('KeyW') || this.input.isDown('ArrowUp');
+
+        if (isForward) {
             const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.mesh.quaternion);
             this.physics.applyForce(forward.multiplyScalar(currentAccel * delta));
 
-            // Spawn Jejak
-            const isBoosting = this.input.isDown('ShiftLeft');
-            const enginePos = new THREE.Vector3(0, 0, 1.2)
-                .applyQuaternion(this.mesh.quaternion)
-                .add(this.mesh.position);
-            
+            // Asap Engine
+            const offsetEngine = new THREE.Vector3(0, 0, 0.5).applyQuaternion(this.mesh.quaternion);
+            const enginePos = this.mesh.position.clone().add(offsetEngine);
             this.exhaust.spawn(enginePos, isBoosting);
+
+            // Takeoff jump
+            if (this.isLanded) {
+                this.physics.velocity.add(this.mesh.up.clone().multiplyScalar(10)); // Jump lebih kuat
+                this.isLanded = false;
+            }
         }
 
-        // Mundur (S)
-        if (this.input.isDown('KeyS')) {
+        // Kontrol Mundur/Rem (S & Arrow Down)
+        const isBackward = this.input.isDown('KeyS') || this.input.isDown('ArrowDown');
+
+        if (isBackward) {
+            // Rem lebih pakem (biar gak kebablasan lagi)
             const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
-            this.physics.applyForce(backward.multiplyScalar(this.physics.accelPower * delta));
+            this.physics.applyForce(backward.multiplyScalar(this.physics.accelPower * 2.0 * delta));
         }
 
-        // Rem (Space)
+        // Space untuk Rem Darurat
         if (this.input.isDown('Space')) {
-            this.physics.friction = 0.90; 
+            // Langsung set velocity ke 0, berhenti seketika (seperti rem tangan)
+            this.physics.velocity.set(0, 0, 0);
+            this.physics.accel.set(0, 0, 0);
         } else {
-            this.physics.friction = 0.98; 
+            this.physics.friction = 0.98; // Friction udara biasa saat dilepas
         }
 
-        // --- 4. UPDATE PHYSICS (WAJIB ADA) ---
-        // Tanpa baris ini, kecepatan tidak akan pernah dihitung!
         this.physics.update(delta);
-        
-        // --- 5. UPDATE UI (HUD) ---
-        const currentSpeed = this.physics.velocity.length();
-        // console.log("Speed:", currentSpeed);
-        bus.emit('speedUpdate', currentSpeed);
 
-        // Update Nama Lokasi
-        this.checkLocation();
+        const currentSpeed = this.physics.velocity.length();
+        // Tampilkan speed dibagi 10 biar angkanya gak lebay di UI
+        bus.emit('speedUpdate', Math.floor(currentSpeed));
     }
 }
